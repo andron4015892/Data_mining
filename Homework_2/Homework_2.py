@@ -1,12 +1,29 @@
+# Необходимо собрать информацию о вакансиях на вводимую должность
+# (используем input или через аргументы получаем должность) с сайтов HH(обязательно) и/или
+# Superjob(по желанию). Приложение должно анализировать несколько страниц сайта
+# (также вводим через input или аргументы). Получившийся список должен содержать в себе минимум:
+# - Наименование вакансии.
+# - Предлагаемую зарплату (разносим в три поля: минимальная и максимальная и валюта. цифры преобразуем к цифрам).
+# - Ссылку на саму вакансию.
+# - Сайт, откуда собрана вакансия.
+# По желанию можно добавить ещё параметры вакансии (например, работодателя и расположение).
+# Структура должна быть одинаковая для вакансий с обоих сайтов. Общий результат можно вывести с
+# помощью dataFrame через pandas. Сохраните в json либо csv.
+
+
 import requests
 from bs4 import BeautifulSoup
 from pprint import pprint
+import json
 
 url = 'https://hh.ru'
+area = 1
+search_name = 'Data science'
+page = 0
 
-params = {'area': 1,
-          'text': 'Data science',
-          'page': 0}
+params = {'area': area,
+          'text': search_name,
+          'page': page}
 
 headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
                          '(KHTML, like Gecko) Chrome/96.0.4664.45 Safari/537.36'}
@@ -17,7 +34,59 @@ dom = BeautifulSoup(response.text, 'html.parser')
 
 vacancies = dom.find_all('div', {'class', 'vacancy-serp-item'})
 
-print(len(vacancies))
-# pprint(dom)
-pprint(vacancies)
-# <div class="vacancy-serp-item vacancy-serp-item_premium" data-qa="vacancy-serp__vacancy vacancy-serp__vacancy_premium"><div class="vacancy-serp-item__row vacancy-serp-item__row_labels"></div><div class=""><div class=""><div class="vacancy-serp-item__row vacancy-serp-item__row_header"><div class="vacancy-serp-item__info"><span data-qa="bloko-header-3" class="bloko-header-section-3 bloko-header-section-3_lite"><span class="resume-search-item__name"><span class="g-user-content"><a class="bloko-link" data-qa="vacancy-serp__vacancy-title" target="_blank" href="https://hh.ru/vacancy/49744980?from=vacancy_search_list&amp;query=data%20scientist" mb-checked="1" data-tip="">Senior data scientist</a></span></span></span></div><div class="vacancy-serp-item__sidebar"><span data-qa="vacancy-serp__vacancy-compensation" class="bloko-header-section-3 bloko-header-section-3_lite">от <!-- -->150 000<!-- --> <!-- -->руб.</span></div></div><div class="vacancy-serp-item__row"><div class="vacancy-serp-item__info"><div class="bloko-text bloko-text_small bloko-text_tertiary"><div class="vacancy-serp-item__meta-info-company"><a class="bloko-link bloko-link_secondary" data-qa="vacancy-serp__vacancy-employer" href="/employer/3151065" mb-checked="1" data-tip="">First data</a></div><div class="vacancy-serp-item__meta-info-badges"><div class="vacancy-serp-item__meta-info-link"><a class="bloko-link" target="_blank" href="https://feedback.hh.ru/article/details/id/5951" mb-checked="1" data-tip=""><span class="bloko-icon bloko-icon_done bloko-icon_initial-action"></span></a></div></div></div><div data-qa="vacancy-serp__vacancy-address" class="bloko-text bloko-text_small bloko-text_tertiary">Москва<!-- -->, <span class="metro-station"><span class="metro-point" style="color:#0072BA"></span>Курская</span> <!-- -->и еще<!-- -->&nbsp;<!-- -->2<!-- -->&nbsp;<span class="metro-station"><span class="metro-point" style="color:#915133"></span></span><span class="metro-station"><span class="metro-point" style="color:#E42313"></span></span></div></div></div></div></div><div class="vacancy-serp-item__row"><div class="vacancy-serp-item__info"><div class="g-user-content"><div data-qa="vacancy-serp__vacancy_snippet_responsibility" class="bloko-text"><span>Проводить A/B-тесты. Участвовать в продуктовом развитии сервиса предиктивной аналитики.</span></div><div data-qa="vacancy-serp__vacancy_snippet_requirement" class="bloko-text bloko-text_no-top-indent"><span>Строить и анализировать customer journey map. Формулировать и проверять гипотезы на основе предыдущих покупок пользователя, пола, возраста и других данных. - </span></div></div></div><div class="vacancy-serp-item__sidebar"><a data-qa="vacancy-serp__vacancy-employer-logo" href="/employer/3151065" mb-checked="1" data-tip=""><img src="https://hhcdn.ru/employer-logo/4088279.jpeg" loading="lazy" alt="First data" class="vacancy-serp-item-logo"></a></div></div><div class="vacancy-serp-item__row vacancy-serp-item__row_controls"><div class="vacancy-serp-item__controls-item vacancy-serp-item__controls-item_response"><a class="bloko-button bloko-button_kind-primary bloko-button_scale-small" data-qa="vacancy-serp__vacancy_response" href="/applicant/vacancy_response?vacancyId=49744980&amp;hhtmFrom=vacancy_search_list" mb-checked="1" data-tip=""><span>Откликнуться</span></a></div><span class="vacancy-serp-item__controls-item vacancy-serp-item__controls-item_pubdate" data-qa="vacancy-serp__vacancy-date"><span class="vacancy-serp-item__publication-date vacancy-serp-item__publication-date_long">24&nbsp;ноября</span><span class="vacancy-serp-item__publication-date vacancy-serp-item__publication-date_short">24.11</span></span></div></div>
+vacancies_list = []
+
+pages = dom.find_all('span', {'class', 'pager-item-not-in-short-range'})
+max_page = int(pages[-1].text)
+
+for i in range(max_page):
+    params = {'area': area,
+              'text': search_name,
+              'page': i - 1}
+
+    response = requests.get(url + '/search/vacancy', params=params, headers=headers)
+
+    dom = BeautifulSoup(response.text, 'html.parser')
+
+    vacancies = dom.find_all('div', {'class', 'vacancy-serp-item'})
+
+    for vacancy in vacancies:
+        vacancy_data = {}
+        body_vacancies = vacancy.find('a', {'class', 'bloko-link'}, {'data-qa',
+                                                                     'vacancy-serp__vacancy-title'})
+        name = body_vacancies.text
+        link = body_vacancies.get('href')
+        body_price = vacancy.find('div', {'class', "vacancy-serp-item__sidebar"})
+        try:
+            price = body_price.find('span').text.replace('\u202f', ' ')
+            price = price.split()
+            if price[0] == 'от':
+                price_min = int(price[1] + price[2])
+                price_max = None
+                price_cur = price[-1]
+            elif price[0] == 'до':
+                price_min = None
+                price_max = int(price[1] + price[2])
+                price_cur = price[-1]
+            else:
+                price_min = int(price[0] + price[1])
+                price_max = int(price[3] + price[4])
+                price_cur = price[-1]
+        except:
+            price_min = None
+            price_max = None
+            price_cur = None
+
+        vacancy_data['name'] = name
+        vacancy_data['link'] = link
+        vacancy_data['source'] = url
+        vacancy_data['price_min'] = price_min
+        vacancy_data['price_max'] = price_max
+        vacancy_data['price_cur'] = price_cur
+
+        vacancies_list.append(vacancy_data)
+
+pprint(vacancies_list)
+
+with open('vacancies.json', 'w', encoding='utf-8') as f:
+    json.dump(vacancies_list, f, ensure_ascii=False)
